@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 # --- CONFIGURAÇÃO DA IA (COLOQUE SUA CHAVE AQUI) ---
 API_KEY = "AIzaSyAvcMp8boF5empfQwnECNAYnwxNIefYZIg" 
 genai.configure(api_key=API_KEY)
+
+# Usando o modelo flash que é mais rápido e estável para a cota gratuita
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Configuração da Página
@@ -22,30 +24,16 @@ st.set_page_config(page_title="JPAgro | Monitoramento Real", layout="wide")
 st.markdown("""
     <style>
     .main { background-color: #f4f7f4; }
-    
-    /* Barra Lateral Verde */
-    section[data-testid="stSidebar"] { 
-        background-color: #2e7d32 !important; 
+    section[data-testid="stSidebar"] { background-color: #2e7d32 !important; }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 { 
+        color: #000000 !important; font-weight: 800 !important;
     }
-    
-    /* Forçar títulos da Sidebar para Preto/Verde Escuro para melhor leitura */
-    section[data-testid="stSidebar"] h1, 
-    section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3 { 
-        color: #000000 !important; /* Preto Sólido para máximo contraste */
-        font-weight: 800 !important;
+    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
+        color: #ffffff !important; font-weight: 500 !important;
     }
-    
-    /* Textos menores da Sidebar em Branco para não poluir */
-    section[data-testid="stSidebar"] p, 
-    section[data-testid="stSidebar"] label { 
-        color: #ffffff !important; 
-        font-weight: 500 !important;
-    }
-
-    [data-testid="stMetric"] { background-color: #ffffff !important; border-left: 5px solid #4caf50 !important; padding: 15px !important; border-radius: 8px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important; }
-    [data-testid="stMetricLabel"] { color: #555555 !important; font-weight: 600 !important; }
-    [data-testid="stMetricValue"] { color: #2e7d32 !important; font-weight: 800 !important; }
+    [data-testid="stMetric"] { background-color: #ffffff !important; border-left: 5px solid #4caf50 !important; padding: 15px !important; border-radius: 8px !important; }
+    [data-testid="stMetricLabel"] { color: #555555 !important; }
+    [data-testid="stMetricValue"] { color: #2e7d32 !important; }
     .stButton>button { background-color: #4caf50 !important; color: white !important; border-radius: 20px !important; }
     h1, h2, h3 { color: #1b5e20 !important; }
     </style>
@@ -79,14 +67,11 @@ if not st.session_state.logged_in:
         st.session_state.logged_in = True
         st.rerun()
 else:
-    # BARRA LATERAL
     with st.sidebar:
         st.title("JPAgro")
         st.divider()
-        
         st.subheader("📂 Importar Mapa")
         mapa_file = st.file_uploader("Suba o arquivo .geojson", type=['geojson'])
-        
         st.divider()
         st.subheader("📸 Agrônomo Digital")
         foto = st.file_uploader("Foto da praga", type=['jpg', 'png', 'jpeg'])
@@ -94,11 +79,13 @@ else:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
             if st.button("🔍 Analisar"):
-                with st.spinner("IA analisando..."):
-                    response = model.generate_content(["Analise esta foto agrícola e sugira manejo:", img])
-                    st.info(response.text)
+                try:
+                    with st.spinner("IA analisando..."):
+                        response = model.generate_content(["Analise esta foto agrícola e sugira manejo:", img])
+                        st.info(response.text)
+                except Exception as e:
+                    st.error(f"Erro na análise da imagem. Verifique sua chave API.")
 
-    # INDICADORES
     clima = buscar_clima(-20.945, -48.620)
     st.subheader("📊 Monitoramento: Monte Azul Paulista")
     c1, c2, c3, c4 = st.columns(4)
@@ -108,8 +95,6 @@ else:
     c4.metric("Operação", "Ideal" if clima['vento'] < 15 else "Alerta Vento")
 
     st.divider()
-
-    # ÁREA CENTRAL
     col_map, col_info = st.columns([1.6, 1])
 
     with col_map:
@@ -119,17 +104,14 @@ else:
                        attr='Esri' )
         
         talhao_clicado = "Nenhum"
-        
         if mapa_file:
             data = json.load(mapa_file)
-            folium.GeoJson(
-                data,
-                name="Talhões Reais",
+            folium.GeoJson(data, name="Talhões Reais",
                 style_function=lambda x: {'fillColor': '#4caf50', 'color': 'white', 'weight': 2, 'fillOpacity': 0.4},
                 tooltip=folium.GeoJsonTooltip(fields=['nome', 'cultura'], aliases=['Talhão:', 'Cultura:'])
             ).add_to(m)
         else:
-            st.info("Aguardando upload do arquivo .geojson na barra lateral para exibir os talhões reais.")
+            st.info("Aguardando upload do arquivo .geojson.")
 
         map_data = st_folium(m, width=700, height=450, use_container_width=True)
 
@@ -140,7 +122,6 @@ else:
                 talhao_clicado = map_data['last_object_clicked_tooltip'].split("Talhão: ")[1].split("\n")[0]
             except:
                 talhao_clicado = "Selecionado"
-                
             st.write(f"**Analisando: {talhao_clicado}**")
             df_ndvi = gerar_historico_ndvi(talhao_clicado)
             fig = px.line(df_ndvi, x="Data", y="NDVI")
@@ -148,14 +129,16 @@ else:
             fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', height=300)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.write("Clique em um talhão no mapa para ver o histórico de NDVI.")
+            st.write("Clique em um talhão no mapa.")
 
-    # CHAT IA
     st.divider()
     st.subheader("💬 Consultoria JPAgro")
     prompt = st.chat_input("Pergunte algo...")
     if prompt:
         with st.chat_message("user"): st.write(prompt)
         with st.chat_message("assistant"):
-            res = model.generate_content(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
-            st.write(res.text)
+            try:
+                res = model.generate_content(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
+                st.write(res.text)
+            except Exception as e:
+                st.error("A IA não conseguiu responder agora. Verifique se sua chave API está ativa no Google AI Studio.")
