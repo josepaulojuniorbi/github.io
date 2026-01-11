@@ -18,12 +18,31 @@ model = genai.GenerativeModel('gemini-1.5-flash')
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Monitoramento Real", layout="wide")
 
-# CSS PARA TEMA VERDE CLARO E LIMPO
+# CSS PARA TEMA VERDE CLARO E AJUSTE DE CONTRASTE NA SIDEBAR
 st.markdown("""
     <style>
     .main { background-color: #f4f7f4; }
-    section[data-testid="stSidebar"] { background-color: #2e7d32 !important; color: white !important; }
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p { color: white !important; }
+    
+    /* Barra Lateral Verde */
+    section[data-testid="stSidebar"] { 
+        background-color: #2e7d32 !important; 
+    }
+    
+    /* Forçar títulos da Sidebar para Preto/Verde Escuro para melhor leitura */
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3 { 
+        color: #000000 !important; /* Preto Sólido para máximo contraste */
+        font-weight: 800 !important;
+    }
+    
+    /* Textos menores da Sidebar em Branco para não poluir */
+    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] label { 
+        color: #ffffff !important; 
+        font-weight: 500 !important;
+    }
+
     [data-testid="stMetric"] { background-color: #ffffff !important; border-left: 5px solid #4caf50 !important; padding: 15px !important; border-radius: 8px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important; }
     [data-testid="stMetricLabel"] { color: #555555 !important; font-weight: 600 !important; }
     [data-testid="stMetricValue"] { color: #2e7d32 !important; font-weight: 800 !important; }
@@ -117,7 +136,6 @@ else:
     with col_info:
         st.subheader("📈 Análise de NDVI")
         if map_data['last_object_clicked_tooltip']:
-            # Ajuste na captura do nome do talhão
             try:
                 talhao_clicado = map_data['last_object_clicked_tooltip'].split("Talhão: ")[1].split("\n")[0]
             except:
