@@ -11,15 +11,21 @@ import json
 from datetime import datetime, timedelta
 
 # --- CONFIGURAÇÃO DA IA ---
+# --- CONFIGURAÇÃO DA IA (VERSÃO ESTÁVEL) ---
 API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc" 
 
 try:
+    import google.generativeai as genai
+    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+    
     genai.configure(api_key=API_KEY)
-    # AJUSTE DEFINITIVO: Usando o nome completo do modelo para evitar o erro 404
-    model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
+    
+    # FORÇANDO O MODELO PRO (Que é o mais compatível de todos)
+    model = genai.GenerativeModel('gemini-1.5-pro') 
 except Exception as e:
-    st.error(f"Erro na configuração da IA: {e}")
+    st.error(f"Erro na configuração: {e}")
     model = None
+
 
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
