@@ -10,17 +10,15 @@ import numpy as np
 import json
 from datetime import datetime, timedelta
 
-# --- CONFIGURAÇÃO DA IA (COLOQUE SUA CHAVE AQUI) ---
+# --- CONFIGURAÇÃO DA IA (CHAVE INTEGRADA) ---
 API_KEY = "AIzaSyAvcMp8boF5empfQwnECNAYnwxNIefYZIg" 
 genai.configure(api_key=API_KEY)
-
-# Usando o modelo flash que é mais rápido e estável para a cota gratuita
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Configuração da Página
-st.set_page_config(page_title="JPAgro | Monitoramento Real", layout="wide")
+st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
 
-# CSS PARA TEMA VERDE CLARO E AJUSTE DE CONTRASTE NA SIDEBAR
+# CSS PARA TEMA VERDE CLARO E CONTRASTE PROFISSIONAL
 st.markdown("""
     <style>
     .main { background-color: #f4f7f4; }
@@ -31,9 +29,15 @@ st.markdown("""
     section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
         color: #ffffff !important; font-weight: 500 !important;
     }
-    [data-testid="stMetric"] { background-color: #ffffff !important; border-left: 5px solid #4caf50 !important; padding: 15px !important; border-radius: 8px !important; }
-    [data-testid="stMetricLabel"] { color: #555555 !important; }
-    [data-testid="stMetricValue"] { color: #2e7d32 !important; }
+    [data-testid="stMetric"] { 
+        background-color: #ffffff !important; 
+        border-left: 5px solid #4caf50 !important; 
+        padding: 15px !important; 
+        border-radius: 8px !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+    }
+    [data-testid="stMetricLabel"] { color: #555555 !important; font-weight: 600 !important; }
+    [data-testid="stMetricValue"] { color: #2e7d32 !important; font-weight: 800 !important; }
     .stButton>button { background-color: #4caf50 !important; color: white !important; border-radius: 20px !important; }
     h1, h2, h3 { color: #1b5e20 !important; }
     </style>
@@ -52,10 +56,15 @@ def buscar_clima(lat, lon):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=precipitation_probability"
         response = requests.get(url )
         data = response.json()
-        return {"temp": data['current_weather']['temperature'], "vento": data['current_weather']['windspeed'], "chuva_prob": data['hourly']['precipitation_probability'][0]}
+        return {
+            "temp": data['current_weather']['temperature'],
+            "vento": data['current_weather']['windspeed'],
+            "chuva_prob": data['hourly']['precipitation_probability'][0]
+        }
     except:
         return {"temp": "--", "vento": "--", "chuva_prob": "--"}
 
+# --- INTERFACE ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
@@ -67,25 +76,29 @@ if not st.session_state.logged_in:
         st.session_state.logged_in = True
         st.rerun()
 else:
+    # BARRA LATERAL
     with st.sidebar:
         st.title("JPAgro")
         st.divider()
         st.subheader("📂 Importar Mapa")
         mapa_file = st.file_uploader("Suba o arquivo .geojson", type=['geojson'])
+        
         st.divider()
         st.subheader("📸 Agrônomo Digital")
-        foto = st.file_uploader("Foto da praga", type=['jpg', 'png', 'jpeg'])
+        foto = st.file_uploader("Foto da praga/doença", type=['jpg', 'png', 'jpeg'])
         if foto:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
             if st.button("🔍 Analisar"):
                 try:
-                    with st.spinner("IA analisando..."):
-                        response = model.generate_content(["Analise esta foto agrícola e sugira manejo:", img])
+                    with st.spinner("IA analisando imagem..."):
+                        prompt_ia = "Você é um agrônomo especialista. Analise esta foto agrícola. Identifique pragas ou doenças e sugira o manejo."
+                        response = model.generate_content([prompt_ia, img])
                         st.info(response.text)
                 except Exception as e:
-                    st.error(f"Erro na análise da imagem. Verifique sua chave API.")
+                    st.error(f"Erro na análise: {str(e)}")
 
+    # INDICADORES
     clima = buscar_clima(-20.945, -48.620)
     st.subheader("📊 Monitoramento: Monte Azul Paulista")
     c1, c2, c3, c4 = st.columns(4)
@@ -95,6 +108,8 @@ else:
     c4.metric("Operação", "Ideal" if clima['vento'] < 15 else "Alerta Vento")
 
     st.divider()
+
+    # ÁREA CENTRAL
     col_map, col_info = st.columns([1.6, 1])
 
     with col_map:
@@ -131,6 +146,7 @@ else:
         else:
             st.write("Clique em um talhão no mapa.")
 
+    # CHAT IA
     st.divider()
     st.subheader("💬 Consultoria JPAgro")
     prompt = st.chat_input("Pergunte algo...")
@@ -141,4 +157,4 @@ else:
                 res = model.generate_content(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
                 st.write(res.text)
             except Exception as e:
-                st.error("A IA não conseguiu responder agora. Verifique se sua chave API está ativa no Google AI Studio.")
+                st.error(f"Erro no chat: {str(e)}")
