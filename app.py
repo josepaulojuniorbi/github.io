@@ -14,7 +14,8 @@ from datetime import datetime, timedelta
 API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc"
 
 def chamar_gemini_direto(prompt, imagem_base64=None):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    # Mudança para v1 (estável) e modelo gemini-1.5-flash (ou gemini-pro se falhar)
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
     
     payload = {
         "contents": [{
@@ -23,6 +24,7 @@ def chamar_gemini_direto(prompt, imagem_base64=None):
     }
     
     if imagem_base64:
+        # Para análise de imagem na v1, o modelo precisa ser o flash
         payload["contents"][0]["parts"].append({
             "inline_data": {
                 "mime_type": "image/jpeg",
@@ -31,12 +33,20 @@ def chamar_gemini_direto(prompt, imagem_base64=None):
         } )
 
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, headers=headers, data=json.dumps(payload))
-    
-    if response.status_code == 200:
-        return response.json()['candidates'][0]['content']['parts'][0]['text']
-    else:
-        return f"Erro na IA: {response.status_code} - {response.text}"
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            # Se o flash falhar, tenta o pro (apenas para texto)
+            if not imagem_base64:
+                url_pro = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}"
+                response_pro = requests.post(url_pro, headers=headers, data=json.dumps(payload ))
+                if response_pro.status_code == 200:
+                    return response_pro.json()['candidates'][0]['content']['parts'][0]['text']
+            return f"Erro na IA: {response.status_code} - {response.text}"
+    except Exception as e:
+        return f"Erro de conexão: {str(e)}"
 
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
