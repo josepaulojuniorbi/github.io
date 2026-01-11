@@ -13,7 +13,9 @@ from datetime import datetime, timedelta
 # --- CONFIGURAÇÃO DA IA (CHAVE INTEGRADA) ---
 API_KEY = "AIzaSyAvcMp8boF5empfQwnECNAYnwxNIefYZIg" 
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+
+# AJUSTE: Usando 'gemini-1.5-flash-latest' para maior compatibilidade
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
@@ -56,15 +58,10 @@ def buscar_clima(lat, lon):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=precipitation_probability"
         response = requests.get(url )
         data = response.json()
-        return {
-            "temp": data['current_weather']['temperature'],
-            "vento": data['current_weather']['windspeed'],
-            "chuva_prob": data['hourly']['precipitation_probability'][0]
-        }
+        return {"temp": data['current_weather']['temperature'], "vento": data['current_weather']['windspeed'], "chuva_prob": data['hourly']['precipitation_probability'][0]}
     except:
         return {"temp": "--", "vento": "--", "chuva_prob": "--"}
 
-# --- INTERFACE ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
@@ -76,13 +73,11 @@ if not st.session_state.logged_in:
         st.session_state.logged_in = True
         st.rerun()
 else:
-    # BARRA LATERAL
     with st.sidebar:
         st.title("JPAgro")
         st.divider()
         st.subheader("📂 Importar Mapa")
         mapa_file = st.file_uploader("Suba o arquivo .geojson", type=['geojson'])
-        
         st.divider()
         st.subheader("📸 Agrônomo Digital")
         foto = st.file_uploader("Foto da praga/doença", type=['jpg', 'png', 'jpeg'])
@@ -98,7 +93,6 @@ else:
                 except Exception as e:
                     st.error(f"Erro na análise: {str(e)}")
 
-    # INDICADORES
     clima = buscar_clima(-20.945, -48.620)
     st.subheader("📊 Monitoramento: Monte Azul Paulista")
     c1, c2, c3, c4 = st.columns(4)
@@ -108,8 +102,6 @@ else:
     c4.metric("Operação", "Ideal" if clima['vento'] < 15 else "Alerta Vento")
 
     st.divider()
-
-    # ÁREA CENTRAL
     col_map, col_info = st.columns([1.6, 1])
 
     with col_map:
@@ -146,7 +138,6 @@ else:
         else:
             st.write("Clique em um talhão no mapa.")
 
-    # CHAT IA
     st.divider()
     st.subheader("💬 Consultoria JPAgro")
     prompt = st.chat_input("Pergunte algo...")
