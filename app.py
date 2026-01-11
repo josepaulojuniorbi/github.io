@@ -19,7 +19,7 @@ model = genai.GenerativeModel('gemini-1.5-flash')
 st.set_page_config(page_title="JPAgro | Monitoramento Real", layout="wide")
 
 # CSS PARA TEMA VERDE CLARO E LIMPO
-st.markdown(\"\"\"
+st.markdown("""
     <style>
     .main { background-color: #f4f7f4; }
     section[data-testid="stSidebar"] { background-color: #2e7d32 !important; color: white !important; }
@@ -30,7 +30,7 @@ st.markdown(\"\"\"
     .stButton>button { background-color: #4caf50 !important; color: white !important; border-radius: 20px !important; }
     h1, h2, h3 { color: #1b5e20 !important; }
     </style>
-    \"\"\", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # Funções de Suporte
 def gerar_historico_ndvi(talhao_nome):
@@ -117,7 +117,12 @@ else:
     with col_info:
         st.subheader("📈 Análise de NDVI")
         if map_data['last_object_clicked_tooltip']:
-            talhao_clicado = map_data['last_object_clicked_tooltip'].split("Talhão: ")[-1].split("\\n")[0]
+            # Ajuste na captura do nome do talhão
+            try:
+                talhao_clicado = map_data['last_object_clicked_tooltip'].split("Talhão: ")[1].split("\n")[0]
+            except:
+                talhao_clicado = "Selecionado"
+                
             st.write(f"**Analisando: {talhao_clicado}**")
             df_ndvi = gerar_historico_ndvi(talhao_clicado)
             fig = px.line(df_ndvi, x="Data", y="NDVI")
