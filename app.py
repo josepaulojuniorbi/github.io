@@ -2,30 +2,41 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import requests
-import google.generativeai as genai
+import json
+import base64
 from PIL import Image
 import pandas as pd
 import plotly.express as px
 import numpy as np
-import json
 from datetime import datetime, timedelta
 
-# --- CONFIGURAÇÃO DA IA ---
-# --- CONFIGURAÇÃO DA IA (VERSÃO ESTÁVEL) ---
-API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc" 
+# --- CONFIGURAÇÃO DA IA (CAMINHO DIRETO) ---
+API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc"
 
-try:
-    import google.generativeai as genai
-    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+def chamar_gemini_direto(prompt, imagem_base64=None):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
     
-    genai.configure(api_key=API_KEY)
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
     
-    # FORÇANDO O MODELO PRO (Que é o mais compatível de todos)
-    model = genai.GenerativeModel('gemini-1.5-pro') 
-except Exception as e:
-    st.error(f"Erro na configuração: {e}")
-    model = None
+    if imagem_base64:
+        payload["contents"][0]["parts"].append({
+            "inline_data": {
+                "mime_type": "image/jpeg",
+                "data": imagem_base64
+            }
+        } )
 
+    headers = {'Content-Type': 'application/json'}
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
+    
+    if response.status_code == 200:
+        return response.json()['candidates'][0]['content']['parts'][0]['text']
+    else:
+        return f"Erro na IA: {response.status_code} - {response.text}"
 
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
@@ -89,15 +100,15 @@ else:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
             if st.button("🔍 Analisar"):
-                if model:
-                    try:
-                        with st.spinner("IA analisando imagem..."):
-                            response = model.generate_content(["Analise esta foto agrícola e identifique pragas ou doenças. Sugira o manejo adequado.", img])
-                            st.info(response.text)
-                    except Exception as e:
-                        st.error(f"A IA encontrou um problema: {e}")
-                else:
-                    st.error("IA não disponível.")
+                with st.spinner("IA analisando imagem..."):
+                    # Converter imagem para base64
+                    import io
+                    buffered = io.BytesIO()
+                    img.save(buffered, format="JPEG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
+                    
+                    res = chamar_gemini_direto("Você é um agrônomo especialista. Analise esta foto e sugira o manejo.", img_str)
+                    st.info(res)
 
     clima = buscar_clima(-20.945, -48.620)
     st.subheader("📊 Monitoramento: Monte Azul Paulista")
@@ -150,9 +161,5 @@ else:
     if prompt:
         with st.chat_message("user"): st.write(prompt)
         with st.chat_message("assistant"):
-            if model:
-                try:
-                    res = model.generate_content(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
-                    st.write(res.text)
-                except Exception as e:
-                    st.error(f"Erro no chat: {e}")
+            res = chamar_gemini_direto(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
+            st.write(res)
