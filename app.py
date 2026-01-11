@@ -11,14 +11,12 @@ import json
 from datetime import datetime, timedelta
 
 # --- CONFIGURAÇÃO DA IA ---
-# Use a chave que termina em ...uVqc
 API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc" 
 
-# Configuração robusta da IA
 try:
     genai.configure(api_key=API_KEY)
-    # Forçando o uso do modelo estável
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # AJUSTE DEFINITIVO: Usando o nome completo do modelo para evitar o erro 404
+    model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
 except Exception as e:
     st.error(f"Erro na configuração da IA: {e}")
     model = None
@@ -88,7 +86,6 @@ else:
                 if model:
                     try:
                         with st.spinner("IA analisando imagem..."):
-                            # Chamada simplificada para evitar erros de versão
                             response = model.generate_content(["Analise esta foto agrícola e identifique pragas ou doenças. Sugira o manejo adequado.", img])
                             st.info(response.text)
                     except Exception as e:
