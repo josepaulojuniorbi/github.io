@@ -15,37 +15,46 @@ genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Configuração da Página
-st.set_page_config(page_title="JPAgro | NDVI Analytics", layout="wide")
+st.set_page_config(page_title="JPAgro | Monitoramento Verde", layout="wide")
 
-# CSS DEFINITIVO PARA CORES (FORÇANDO VISIBILIDADE)
+# CSS PARA TEMA VERDE CLARO E LIMPO
 st.markdown("""
     <style>
-    /* Fundo da página */
-    .main { background-color: #f0f2f5; }
+    /* Fundo Geral */
+    .main { background-color: #f4f7f4; }
     
-    /* Estilização dos Quadrados de Indicadores */
+    /* Barra Lateral Verde */
+    section[data-testid="stSidebar"] {
+        background-color: #2e7d32 !important;
+        color: white !important;
+    }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span {
+        color: white !important;
+    }
+
+    /* Quadrados de Indicadores (Brancos com borda verde) */
     [data-testid="stMetric"] {
         background-color: #ffffff !important;
-        border: 1px solid #c3cfd9 !important;
+        border-left: 5px solid #4caf50 !important;
         padding: 15px !important;
-        border-radius: 12px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
     }
     
-    /* Forçar cor do texto nos indicadores */
-    [data-testid="stMetricLabel"] {
-        color: #475569 !important; /* Cinza escuro */
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-    }
-    [data-testid="stMetricValue"] {
-        color: #1e293b !important; /* Quase preto */
-        font-size: 1.8rem !important;
-        font-weight: 700 !important;
+    /* Cores dos Textos nos Indicadores */
+    [data-testid="stMetricLabel"] { color: #555555 !important; font-weight: 600 !important; }
+    [data-testid="stMetricValue"] { color: #2e7d32 !important; font-weight: 800 !important; }
+
+    /* Botões Verdes */
+    .stButton>button {
+        background-color: #4caf50 !important;
+        color: white !important;
+        border-radius: 20px !important;
+        border: none !important;
     }
     
-    /* Ajuste do Título */
-    h1, h2, h3 { color: #0f172a !important; }
+    /* Títulos */
+    h1, h2, h3 { color: #1b5e20 !important; font-family: 'Segoe UI', sans-serif; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -77,30 +86,33 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("🚜 JPAgro - Acesso")
-    user = st.text_input("Usuário")
-    password = st.text_input("Senha", type="password")
-    if st.button("Entrar"):
-        st.session_state.logged_in = True
-        st.rerun()
+    st.title("🚜 JPAgro - Bem-vindo")
+    with st.container():
+        user = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
+        if st.button("Entrar no Painel"):
+            st.session_state.logged_in = True
+            st.rerun()
 else:
-    # BARRA LATERAL
+    # BARRA LATERAL VERDE
     with st.sidebar:
-        st.title("JPAgro GIS")
+        st.title("JPAgro")
+        st.write("Inteligência no Campo")
         st.divider()
-        st.subheader("📸 Diagnóstico")
-        foto = st.file_uploader("Foto da praga", type=['jpg', 'png', 'jpeg'])
+        st.subheader("📸 Agrônomo Digital")
+        foto = st.file_uploader("Analisar praga por foto", type=['jpg', 'png', 'jpeg'])
         if foto:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
-            if st.button("🔍 Analisar"):
+            if st.button("🔍 Iniciar Diagnóstico"):
                 with st.spinner("IA analisando..."):
-                    response = model.generate_content(["Identifique pragas nesta foto agrícola e sugira manejo:", img])
-                    st.info(response.text)
+                    response = model.generate_content(["Analise esta foto agrícola e sugira manejo:", img])
+                    st.success("Diagnóstico Concluído")
+                    st.write(response.text)
 
-    # INDICADORES TOPO (AGORA COM CORES FORÇADAS)
+    # INDICADORES (LIMPOS E VERDES)
     clima = buscar_clima(-20.945, -48.620)
-    st.subheader("📊 Condições Atuais - Monte Azul Paulista")
+    st.subheader("📊 Monitoramento: Monte Azul Paulista")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Temperatura", f"{clima['temp']}°C")
     c2.metric("Vento", f"{clima['vento']} km/h")
@@ -110,10 +122,10 @@ else:
     st.divider()
 
     # ÁREA CENTRAL
-    col_map, col_info = st.columns([1.5, 1])
+    col_map, col_info = st.columns([1.6, 1])
 
     with col_map:
-        st.subheader("🗺️ Mapa Interativo")
+        st.subheader("🗺️ Mapa de Satélite")
         m = folium.Map(location=[-20.945, -48.620], zoom_start=16, 
                        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                        attr='Esri' )
@@ -140,14 +152,14 @@ else:
         
         fig = px.line(df_ndvi, x="Data", y="NDVI")
         fig.update_traces(line_color='#2e7d32', line_width=3)
-        fig.update_layout(plot_bgcolor='white', margin=dict(l=0, r=0, t=30, b=0), height=300)
+        fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=30, b=0), height=300)
         st.plotly_chart(fig, use_container_width=True)
         st.write(f"Status: {'⚠️ Atenção' if '03' in talhao_selecionado else '✅ Estável'}")
 
     # CHAT IA
     st.divider()
-    st.subheader("💬 Consultoria IA")
-    prompt = st.chat_input("Pergunte algo...")
+    st.subheader("💬 Consultoria JPAgro")
+    prompt = st.chat_input("Pergunte algo ao seu cientista de dados...")
     if prompt:
         with st.chat_message("user"): st.write(prompt)
         with st.chat_message("assistant"):
