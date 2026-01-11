@@ -4,3 +4,5 @@ streamlit-folium
 geopandas
 requests
 pandas
+google-generativeai
+pillow
