@@ -10,12 +10,12 @@ import numpy as np
 import json
 from datetime import datetime, timedelta
 
-# --- CONFIGURAÇÃO DA IA (CHAVE INTEGRADA) ---
-API_KEY = "AIzaSyAvcMp8boF5empfQwnECNAYnwxNIefYZIg" 
+# --- CONFIGURAÇÃO DA IA (NOVA CHAVE DEDICADA) ---
+API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc" 
 genai.configure(api_key=API_KEY)
 
-# AJUSTE: Usando 'gemini-1.5-flash-latest' para maior compatibilidade
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+# Usando o modelo estável
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
@@ -99,7 +99,7 @@ else:
     c1.metric("Temperatura", f"{clima['temp']}°C")
     c2.metric("Vento", f"{clima['vento']} km/h")
     c3.metric("Prob. Chuva", f"{clima['chuva_prob']}%")
-    c4.metric("Operação", "Ideal" if clima['vento'] < 15 else "Alerta Vento")
+    c4.metric("Status", "Ideal" if clima['vento'] < 15 else "Alerta Vento")
 
     st.divider()
     col_map, col_info = st.columns([1.6, 1])
