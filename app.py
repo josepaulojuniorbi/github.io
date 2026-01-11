@@ -11,35 +11,43 @@ import numpy as np
 from datetime import datetime, timedelta
 import io
 
-# --- CONFIGURACAO DA IA ---
-API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc"
+# --- CONFIGURACAO DA IA (USANDO STREAMLIT SECRETS) ---
+# A chave nao fica mais exposta no codigo!
+try:
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+except:
+    st.error("Erro: Chave OPENAI_API_KEY nao encontrada nos Secrets do Streamlit.")
+    OPENAI_API_KEY = None
 
-def chamar_gemini_direto(prompt, imagem_base64=None):
-    # Usando modelos estaveis para evitar erro 404
-    model_text = "gemini-pro"
-    model_vision = "gemini-pro-vision"
-    headers = {"Content-Type": "application/json"}
+def chamar_ia_openai(prompt, imagem_base64=None):
+    if not OPENAI_API_KEY:
+        return "Erro: Chave de API nao configurada."
+        
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {OPENAI_API_KEY}"
+    }
     
+    conteudo = [{"type": "text", "text": prompt}]
     if imagem_base64:
-        url = f"https://generativelanguage.googleapis.com/v1/models/{model_vision}:generateContent?key={API_KEY}"
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt},
-                    {"inline_data": {"mime_type": "image/jpeg", "data": imagem_base64}}
-                ]
-            }]
-        }
-    else:
-        url = f"https://generativelanguage.googleapis.com/v1/models/{model_text}:generateContent?key={API_KEY}"
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+        conteudo.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{imagem_base64}"}
+        } )
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": conteudo}],
+        "max_tokens": 800
+    }
 
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload ))
+        response = requests.post(url, headers=headers, json=payload)
         if response.status_code == 200:
-            return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+            return response.json()["choices"][0]["message"]["content"]
         else:
-            return f"Erro na IA: {response.status_code} - {response.text}"
+            return f"Erro na IA (OpenAI): {response.status_code} - {response.text}"
     except Exception as e:
         return f"Erro de conexao: {str(e)}"
 
@@ -107,11 +115,11 @@ else:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
             if st.button("Analisar"):
-                with st.spinner("Analisando..."):
+                with st.spinner("Analisando com GPT-4o-mini..."):
                     buffered = io.BytesIO()
                     img.save(buffered, format="JPEG")
                     img_str = base64.b64encode(buffered.getvalue()).decode()
-                    res = chamar_gemini_direto("Analise esta foto de planta e sugira o manejo em portugues.", img_str)
+                    res = chamar_ia_openai("Voce e um agronomo especialista. Analise esta foto e sugira o manejo em portugues do Brasil.", img_str)
                     st.info(res)
         if st.button("Sair"):
             st.session_state.logged_in = False
@@ -163,5 +171,5 @@ else:
     if prompt:
         with st.chat_message("user"): st.write(prompt)
         with st.chat_message("assistant"):
-            res = chamar_gemini_direto(f"Agronomo em Monte Azul Paulista responde sobre {talhao_clicado}: {prompt}")
+            res = chamar_ia_openai(f"Agronomo em Monte Azul Paulista responde sobre o talhao {talhao_clicado}: {prompt}")
             st.write(res)
