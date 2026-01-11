@@ -10,17 +10,23 @@ import numpy as np
 import json
 from datetime import datetime, timedelta
 
-# --- CONFIGURAÇÃO DA IA (NOVA CHAVE DEDICADA) ---
+# --- CONFIGURAÇÃO DA IA ---
+# Use a chave que termina em ...uVqc
 API_KEY = "AIzaSyCKZGDTzGVyE39UJqXTJcZxmMlP-kYuVqc" 
-genai.configure(api_key=API_KEY)
 
-# Usando o modelo estável
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Configuração robusta da IA
+try:
+    genai.configure(api_key=API_KEY)
+    # Forçando o uso do modelo estável
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error(f"Erro na configuração da IA: {e}")
+    model = None
 
 # Configuração da Página
 st.set_page_config(page_title="JPAgro | Inteligência no Campo", layout="wide")
 
-# CSS PARA TEMA VERDE CLARO E CONTRASTE PROFISSIONAL
+# CSS PARA TEMA VERDE CLARO
 st.markdown("""
     <style>
     .main { background-color: #f4f7f4; }
@@ -31,15 +37,9 @@ st.markdown("""
     section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
         color: #ffffff !important; font-weight: 500 !important;
     }
-    [data-testid="stMetric"] { 
-        background-color: #ffffff !important; 
-        border-left: 5px solid #4caf50 !important; 
-        padding: 15px !important; 
-        border-radius: 8px !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
-    }
-    [data-testid="stMetricLabel"] { color: #555555 !important; font-weight: 600 !important; }
-    [data-testid="stMetricValue"] { color: #2e7d32 !important; font-weight: 800 !important; }
+    [data-testid="stMetric"] { background-color: #ffffff !important; border-left: 5px solid #4caf50 !important; padding: 15px !important; border-radius: 8px !important; }
+    [data-testid="stMetricLabel"] { color: #555555 !important; }
+    [data-testid="stMetricValue"] { color: #2e7d32 !important; }
     .stButton>button { background-color: #4caf50 !important; color: white !important; border-radius: 20px !important; }
     h1, h2, h3 { color: #1b5e20 !important; }
     </style>
@@ -85,13 +85,16 @@ else:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
             if st.button("🔍 Analisar"):
-                try:
-                    with st.spinner("IA analisando imagem..."):
-                        prompt_ia = "Você é um agrônomo especialista. Analise esta foto agrícola. Identifique pragas ou doenças e sugira o manejo."
-                        response = model.generate_content([prompt_ia, img])
-                        st.info(response.text)
-                except Exception as e:
-                    st.error(f"Erro na análise: {str(e)}")
+                if model:
+                    try:
+                        with st.spinner("IA analisando imagem..."):
+                            # Chamada simplificada para evitar erros de versão
+                            response = model.generate_content(["Analise esta foto agrícola e identifique pragas ou doenças. Sugira o manejo adequado.", img])
+                            st.info(response.text)
+                    except Exception as e:
+                        st.error(f"A IA encontrou um problema: {e}")
+                else:
+                    st.error("IA não disponível.")
 
     clima = buscar_clima(-20.945, -48.620)
     st.subheader("📊 Monitoramento: Monte Azul Paulista")
@@ -144,8 +147,9 @@ else:
     if prompt:
         with st.chat_message("user"): st.write(prompt)
         with st.chat_message("assistant"):
-            try:
-                res = model.generate_content(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
-                st.write(res.text)
-            except Exception as e:
-                st.error(f"Erro no chat: {str(e)}")
+            if model:
+                try:
+                    res = model.generate_content(f"Produtor em Monte Azul Paulista pergunta sobre {talhao_clicado}: {prompt}")
+                    st.write(res.text)
+                except Exception as e:
+                    st.error(f"Erro no chat: {e}")
